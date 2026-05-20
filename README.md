@@ -1,59 +1,62 @@
 # Wayfarer Gaode Map Layer
 
-A Tampermonkey userscript that adds GCJ-02 corrected Gaode/AMap base layers to the Niantic Wayfarer map view.
+一个给 [Niantic Wayfarer](https://wayfarer.nianticlabs.com/) 使用的篡改猴脚本，用高德地图/高德卫星图替换 Wayfarer 地图页里的底图，并对中国大陆地区的 GCJ-02 坐标偏移做了瓦片层校正。
 
-The script keeps Wayfarer's original Google Maps instance and adds two extra map types:
+脚本不会重写 Wayfarer 的 POI、交互和详情面板，而是保留原本的 Google Maps 实例，只额外加入高德底图图层。
 
-- Gaode
-- Gaode Satellite
+## 功能
 
-It also replaces the map type control with a four-button group:
+- 在 Wayfarer 地图页添加高德地图底图。
+- 添加高德卫星图底图。
+- 对高德瓦片做 WGS84/GCJ-02 偏移校正，让 Wayfarer 的 POI 和中国大陆地图内容更好对齐。
+- 把原来的地图类型按钮替换成四个选项：
+  - 预设
+  - 卫星
+  - 高德
+  - 高德卫星
 
-- Default
-- Satellite
-- Gaode
-- Gaode Satellite
+## 安装
 
-## Install
-
-Install a userscript manager first:
+先安装一个用户脚本管理器：
 
 - [Tampermonkey](https://www.tampermonkey.net/)
 - [Violentmonkey](https://violentmonkey.github.io/)
 
-Then install the script from GitHub:
+然后打开下面的安装链接：
 
 ```text
 https://github.com/ReiiNoki/wayfarer-gaode-map-layer/raw/main/wayfarer-gaode-map.user.js
 ```
 
-If the userscript manager does not open the install page automatically, create a new userscript manually and paste the contents of `wayfarer-gaode-map.user.js`.
+如果脚本管理器没有自动弹出安装页面，也可以手动新建脚本，然后复制 `wayfarer-gaode-map.user.js` 的内容进去。
 
-## Supported Site
+## 适用页面
 
 ```text
 https://wayfarer.nianticlabs.com/new/mapview*
 https://wayfarer.nianticlabs.com/new/*
 ```
 
-## What It Does
+## 使用方法
 
-- Captures the Google Maps instance used by Wayfarer.
-- Registers custom Gaode road and satellite map types.
-- Applies WGS84 to GCJ-02 tile alignment so Wayfarer POIs line up with Gaode map imagery in mainland China.
-- Adds Gaode map buttons into Wayfarer's existing map legend control.
-- Leaves Wayfarer's POI markers and interaction model intact.
+安装脚本后打开 Wayfarer 地图页。左下角地图图例区域会出现四个地图类型按钮：
 
-## Known Limitations
+```text
+预设 / 卫星 / 高德 / 高德卫星
+```
 
-- This is not an official Niantic, Google, or Gaode/AMap project.
-- The script depends on Wayfarer's current page structure and Google Maps usage. It may need updates if Wayfarer changes its frontend.
-- Gaode tile availability and access are controlled by Gaode/AMap.
-- The GCJ-02 correction is intended for mainland China map alignment. Areas outside China fall back to unshifted tiles.
+选择 `高德` 或 `高德卫星` 即可切换到高德底图；选择 `预设` 或 `卫星` 可以切回 Wayfarer 原本的 Google 地图图层。
 
-## Development
+## 已知限制
 
-This repository is intentionally small:
+- 这不是 Niantic、Google 或高德/AMap 的官方插件。
+- 脚本依赖 Wayfarer 当前的前端结构和 Google Maps 接入方式。如果 Wayfarer 更新页面实现，脚本可能需要跟着维护。
+- 高德瓦片服务由高德/AMap 提供，可用性和访问限制取决于对应服务。
+- 坐标偏移校正主要面向中国大陆地区。中国大陆以外区域会使用未偏移的瓦片。
+
+## 开发
+
+项目结构很简单：
 
 ```text
 wayfarer-gaode-map.user.js
@@ -61,12 +64,12 @@ README.md
 LICENSE
 ```
 
-For a quick syntax check:
+语法检查：
 
 ```bash
 node --check wayfarer-gaode-map.user.js
 ```
 
-## License
+## 许可证
 
 MIT
