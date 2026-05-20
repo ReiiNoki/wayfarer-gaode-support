@@ -133,7 +133,7 @@ maybeCaptureFromArgs(args);
 普通高德地图：
 
 ```js
-https://webrd0{server}.is.autonavi.com/appmaptile
+https://wprd0{server}.is.autonavi.com/appmaptile
 ```
 
 高德卫星图：
@@ -142,7 +142,7 @@ https://webrd0{server}.is.autonavi.com/appmaptile
 https://webst0{server}.is.autonavi.com/appmaptile?style=6
 ```
 
-卫星图文字标注：
+卫星图路网/文字标注：
 
 ```js
 https://webst0{server}.is.autonavi.com/appmaptile?style=8
@@ -243,10 +243,10 @@ map.setMapTypeId(MAPTYPE_GAODE);
 
 ## 高德卫星为什么还要 overlay
 
-高德卫星图分成两层：
+高德卫星图参考 IITC 的 Gaode Hybrid 做法，分成两层：
 
 - `style=6`：卫星影像
-- `style=8`：道路和文字标注
+- `style=8`：道路和文字标注，作为 0.75 透明度的覆盖层
 
 所以切到高德卫星时，脚本先设置卫星底图：
 

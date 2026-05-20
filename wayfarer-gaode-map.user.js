@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Wayfarer Gaode Map Layer
 // @namespace    https://wayfarer.nianticlabs.com/
-// @version      0.5.0
+// @version      0.5.1
 // @description  Add GCJ-02 corrected Gaode/AMap base layers to Niantic Wayfarer.
 // @author       ReiiNoki
 // @license      MIT
@@ -248,7 +248,7 @@
     if (!isValidTileY(coord.y, zoom)) return '';
     const x = wrapTileX(coord.x, zoom);
     const server = ((x + coord.y) % 4) + 1;
-    return `https://webrd0${server}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x=${x}&y=${coord.y}&z=${zoom}`;
+    return `https://wprd0${server}.is.autonavi.com/appmaptile?style=7&x=${x}&y=${coord.y}&z=${zoom}&lang=zh_cn`;
   }
 
   function gaodeSatUrl(coord, zoom) {
@@ -336,7 +336,7 @@
     };
   }
 
-  function createShiftedTile(coord, zoom, ownerDocument, urlForCoord) {
+  function createShiftedTile(coord, zoom, ownerDocument, urlForCoord, opacity = 1) {
     const doc = ownerDocument || document;
     const tile = doc.createElement('div');
     tile.style.cssText = `width:${TILE_SIZE}px;height:${TILE_SIZE}px;overflow:hidden;position:relative;background:#f3f1ec;`;
@@ -369,6 +369,7 @@
           `top:${sourceCoord.y * TILE_SIZE - sourceOriginY}px`,
           'user-select:none',
           'border:0',
+          `opacity:${opacity}`,
         ].join(';');
         tile.appendChild(img);
       }
@@ -377,7 +378,7 @@
     return tile;
   }
 
-  function createGaodeMapType(name, alt, urlForCoord) {
+  function createGaodeMapType(name, alt, urlForCoord, opacity = 1) {
     return {
       name,
       alt,
@@ -385,7 +386,7 @@
       minZoom: 3,
       maxZoom: 20,
       getTile(coord, zoom, ownerDocument) {
-        return createShiftedTile(coord, zoom, ownerDocument, urlForCoord);
+        return createShiftedTile(coord, zoom, ownerDocument, urlForCoord, opacity);
       },
       releaseTile(tile) {
         if (tile && tile.replaceChildren) tile.replaceChildren();
@@ -424,7 +425,7 @@
     map.overlayMapTypes.clear();
     if (mode === MAPTYPE_GAODE_SAT) {
       map.setMapTypeId(MAPTYPE_GAODE_SAT);
-      map.overlayMapTypes.push(createGaodeMapType('Gaode Labels', 'Gaode satellite labels', gaodeSatLabelUrl));
+      map.overlayMapTypes.push(createGaodeMapType('Gaode Labels', 'Gaode satellite labels', gaodeSatLabelUrl, 0.75));
     } else {
       map.setMapTypeId(mode);
     }
