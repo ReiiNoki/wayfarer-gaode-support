@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Wayfarer Gaode Map Layer
+// @name         Ninatic Wayfarer 高德地图支持插件
 // @namespace    https://wayfarer.nianticlabs.com/
-// @version      0.5.1
+// @version      1.0.0
 // @description  Add GCJ-02 corrected Gaode/AMap base layers to Niantic Wayfarer.
 // @author       ReiiNoki
 // @license      MIT
