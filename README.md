@@ -54,22 +54,6 @@ https://wayfarer.nianticlabs.com/new/*
 - 高德瓦片服务由高德/AMap 提供，可用性和访问限制取决于对应服务。
 - 坐标偏移校正主要面向中国大陆地区。中国大陆以外区域会使用未偏移的瓦片。
 
-## 开发
-
-项目结构很简单：
-
-```text
-wayfarer-gaode-map.user.js
-README.md
-LICENSE
-```
-
-语法检查：
-
-```bash
-node --check wayfarer-gaode-map.user.js
-```
-
 ## 许可证
 
 MIT
