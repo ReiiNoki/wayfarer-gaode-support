@@ -1,10 +1,10 @@
 # Wayfarer Gaode Map Layer
 
-给国内 Pokémon GO 玩家看 Wayfarer 地图用的小脚本。
+给国内 Pokémon GO 训练家准备的 Wayfarer 地图小帮手。
 
-Wayfarer 地图页默认用 Google 地图。在国内看候选点、周边道路、卫星图的时候，有时候不太顺手。这个脚本会给地图加上高德地图和高德卫星图，并顺手处理中国大陆地区常见的坐标偏移问题，让 POI 和底图更容易对上。
+Wayfarer 默认用 Google 地图。在国内看候选点、补给站周边、道路和卫星图时，经常会有点“不在一个频道上”的感觉。这个脚本会给 Wayfarer 地图加上高德地图和高德卫星图，并处理中国大陆地区常见的坐标偏移，让 POI 和底图更容易对上。
 
-它只换底图，不会改你的提名、审核、POI 数据，也不会影响游戏结果。
+简单说：看点、看路、看卫星图，少一点猜，多一点准。
 
 ## 安装
 
@@ -14,33 +14,37 @@ Wayfarer 地图页默认用 Google 地图。在国内看候选点、周边道路
 https://greasyfork.org/zh-CN/scripts/替换为发布后的脚本ID-wayfarer-gaode-map-layer
 ```
 
-需要先装一个用户脚本管理器，比如：
+安装前需要先有一个用户脚本管理器：
 
 - [Tampermonkey](https://www.tampermonkey.net/)
 - [Violentmonkey](https://violentmonkey.github.io/)
 
-## 怎么用
+## 使用
 
-装好后打开 Wayfarer 地图页：
+装好脚本后，打开 Wayfarer 地图页：
 
 ```text
 https://wayfarer.nianticlabs.com/new/mapview
 ```
 
-左下角会多出一组地图按钮：
+左下角会出现四个地图选项：
 
 ```text
 预设 / 卫星 / 高德 / 高德卫星
 ```
 
-想看国内地图就点 `高德`，想看卫星图就点 `高德卫星`。需要切回原来的 Google 图层时，点 `预设` 或 `卫星` 就行。
+想看国内常用地图，点 `高德`。
+
+想看候选点周边环境，点 `高德卫星`。
+
+想切回原来的 Google 图层，点 `预设` 或 `卫星`。
 
 ## 小提醒
 
+- 这个脚本只换底图，不会修改提名、审核、POI 数据，也不会影响游戏结果。
 - 这不是 Niantic、Google 或高德的官方插件。
-- 主要是为中国大陆地区看 Wayfarer 地图准备的。
-- 如果 Wayfarer 以后改版，脚本可能也要跟着修。
-- 高德瓦片来自高德/AMap，能不能稳定访问取决于它们自己的服务。
+- 如果 Wayfarer 页面以后改版，脚本可能也要跟着升级。
+- 高德瓦片来自高德/AMap，能否稳定访问取决于对应服务。
 
 ## 许可证
 
