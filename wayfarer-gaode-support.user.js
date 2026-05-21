@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Niantic Wayfarer 高德地图支持插件
 // @namespace    https://wayfarer.nianticlabs.com/
-// @version      1.1.0
+// @version      1.1.1
 // @description  Add GCJ-02 corrected Gaode/AMap base layers to Niantic Wayfarer.
 // @author       ReiiNoki
 // @license      MIT
@@ -70,10 +70,12 @@
     let mapCtorWatcherInstalled = false;
     let capturedMap = null;
     let markerRestoreTimer = null;
+    let creatingCacheMarker = false;
     const markerCache = new Map();
 
     window.__wayfarerGaodePageHookInstalled = true;
     window.__wayfarerGaodeMarkerCache = markerCache;
+    window.__wayfarerGaodeRestoreCachedMarkers = restoreCachedMarkers;
 
     function log(...args) {
       console.log(LOG_PREFIX, ...args);
@@ -108,37 +110,135 @@
       return `${position.lat.toFixed(6)},${position.lng.toFixed(6)}`;
     }
 
+    function markerGetter(marker, name) {
+      const getter = marker && marker[name];
+      if (typeof getter !== 'function') return undefined;
+      try {
+        return getter.call(marker);
+      } catch (_) {
+        return undefined;
+      }
+    }
+
+    function markerOptions(marker) {
+      const position = markerPosition(marker);
+      if (!position) return null;
+
+      const options = {
+        position,
+        visible: true,
+        optimized: true,
+      };
+
+      [
+        ['getIcon', 'icon'],
+        ['getLabel', 'label'],
+        ['getTitle', 'title'],
+        ['getZIndex', 'zIndex'],
+        ['getOpacity', 'opacity'],
+        ['getClickable', 'clickable'],
+        ['getCursor', 'cursor'],
+        ['getAnimation', 'animation'],
+        ['getShape', 'shape'],
+      ].forEach(([getterName, optionName]) => {
+        const value = markerGetter(marker, getterName);
+        if (value !== undefined) options[optionName] = value;
+      });
+
+      return options;
+    }
+
     function rememberMarker(marker) {
+      if (!marker || marker.__wayfarerGaodeCacheClone || creatingCacheMarker) return;
+
       const key = markerKey(marker);
-      if (!key) return;
+      const options = markerOptions(marker);
+      if (!key || !options) return;
 
       marker.__wayfarerGaodeMarkerKey = key;
-      markerCache.set(key, marker);
+      const entry = markerCache.get(key) || { source: null, clone: null, options: null };
+      entry.source = marker;
+      entry.options = options;
+      markerCache.set(key, entry);
       window.__wayfarerGaodeMarkerCache = markerCache;
+    window.__wayfarerGaodeRestoreCachedMarkers = restoreCachedMarkers;
+    }
+
+    function sourceIsVisible(entry) {
+      const marker = entry && entry.source;
+      if (!marker || typeof marker.getMap !== 'function') return false;
+      if (!marker.getMap()) return false;
+      const visible = markerGetter(marker, 'getVisible');
+      return visible !== false;
+    }
+
+    function hideClone(entry) {
+      if (!entry || !entry.clone || typeof entry.clone.setMap !== 'function') return;
+      if (entry.clone.getMap && !entry.clone.getMap()) return;
+      entry.clone.setMap(null);
+    }
+
+    function createClone(entry) {
+      const maps = window.google && window.google.maps;
+      if (!maps || typeof maps.Marker !== 'function' || !entry.options) return null;
+
+      creatingCacheMarker = true;
+      try {
+        const clone = new maps.Marker({
+          ...entry.options,
+          map: capturedMap,
+          visible: true,
+        });
+        clone.__wayfarerGaodeCacheClone = true;
+        return clone;
+      } finally {
+        creatingCacheMarker = false;
+      }
+    }
+
+    function showClone(entry) {
+      if (!entry || !entry.options) return false;
+      if (!entry.clone) entry.clone = createClone(entry);
+      if (!entry.clone) return false;
+
+      if (typeof entry.clone.setPosition === 'function') entry.clone.setPosition(entry.options.position);
+      if (typeof entry.clone.setIcon === 'function' && entry.options.icon !== undefined) entry.clone.setIcon(entry.options.icon);
+      if (typeof entry.clone.setLabel === 'function' && entry.options.label !== undefined) entry.clone.setLabel(entry.options.label);
+      if (typeof entry.clone.setTitle === 'function' && entry.options.title !== undefined) entry.clone.setTitle(entry.options.title);
+      if (typeof entry.clone.setZIndex === 'function' && entry.options.zIndex !== undefined) entry.clone.setZIndex(entry.options.zIndex);
+      if (typeof entry.clone.setOpacity === 'function' && entry.options.opacity !== undefined) entry.clone.setOpacity(entry.options.opacity);
+      if (typeof entry.clone.setVisible === 'function') entry.clone.setVisible(true);
+      if (typeof entry.clone.setMap === 'function' && (!entry.clone.getMap || !entry.clone.getMap())) {
+        entry.clone.setMap(capturedMap);
+      }
+
+      return true;
     }
 
     function restoreCachedMarkers() {
       if (!capturedMap) return;
 
       let restored = 0;
-      markerCache.forEach((marker) => {
-        if (!marker || typeof marker.getMap !== 'function' || typeof marker.setMap !== 'function') return;
-        if (marker.getMap()) return;
+      markerCache.forEach((entry) => {
+        if (sourceIsVisible(entry)) {
+          hideClone(entry);
+          return;
+        }
 
         try {
-          marker.setMap(capturedMap);
-          restored += 1;
+          if (showClone(entry)) restored += 1;
         } catch (error) {
           console.warn(LOG_PREFIX, 'Could not restore cached marker:', error);
         }
       });
 
-      if (restored) log(`restored ${restored} cached marker(s).`);
+      if (restored) log(`showing ${restored} cached marker clone(s).`);
     }
 
     function scheduleMarkerRestore() {
       clearTimeout(markerRestoreTimer);
-      markerRestoreTimer = setTimeout(restoreCachedMarkers, 250);
+      [100, 350, 900, 1600].forEach((delay) => setTimeout(restoreCachedMarkers, delay));
+      markerRestoreTimer = setTimeout(restoreCachedMarkers, 2500);
     }
 
     function installMapRestoreListeners(targetMap) {
@@ -146,7 +246,7 @@
       if (typeof targetMap.addListener !== 'function') return;
 
       targetMap.__wayfarerGaodeMarkerRestoreListenersInstalled = true;
-      ['idle', 'zoom_changed', 'dragend'].forEach((eventName) => {
+      ['idle', 'zoom_changed', 'dragend', 'bounds_changed'].forEach((eventName) => {
         targetMap.addListener(eventName, scheduleMarkerRestore);
       });
     }
@@ -211,6 +311,7 @@
       function WrappedMarker(...args) {
         maybeCaptureFromArgs(args);
         const marker = Reflect.construct(OriginalMarker, args, new.target || OriginalMarker);
+        if (creatingCacheMarker) return marker;
         if (marker && typeof marker.getMap === 'function') capture(marker.getMap());
         rememberMarker(marker);
         setTimeout(() => rememberMarker(marker), 0);
@@ -248,6 +349,17 @@
         proto.setPosition = function (...args) {
           const result = originalSetPosition.apply(this, args);
           rememberMarker(this);
+          return result;
+        };
+      }
+
+      const originalSetVisible = proto.setVisible;
+      if (typeof originalSetVisible === 'function') {
+        proto.setVisible = function (...args) {
+          rememberMarker(this);
+          const result = originalSetVisible.apply(this, args);
+          if (args[0] === false) scheduleMarkerRestore();
+          if (args[0] === true) rememberMarker(this);
           return result;
         };
       }
