@@ -1,14 +1,14 @@
 // ==UserScript==
-// @name         Ninatic Wayfarer 高德地图支持插件
+// @name         Niantic Wayfarer 高德地图支持插件
 // @namespace    https://wayfarer.nianticlabs.com/
-// @version      1.0.0
+// @version      1.1.0
 // @description  Add GCJ-02 corrected Gaode/AMap base layers to Niantic Wayfarer.
 // @author       ReiiNoki
 // @license      MIT
-// @homepageURL  https://github.com/ReiiNoki/wayfarer-gaode-map-layer
-// @supportURL   https://github.com/ReiiNoki/wayfarer-gaode-map-layer/issues
-// @updateURL    https://github.com/ReiiNoki/wayfarer-gaode-map-layer/raw/main/wayfarer-gaode-map.user.js
-// @downloadURL  https://github.com/ReiiNoki/wayfarer-gaode-map-layer/raw/main/wayfarer-gaode-map.user.js
+// @homepageURL  https://github.com/ReiiNoki/wayfarer-gaode-support
+// @supportURL   https://github.com/ReiiNoki/wayfarer-gaode-support/issues
+// @updateURL    https://github.com/ReiiNoki/wayfarer-gaode-support/raw/main/wayfarer-gaode-support.user.js
+// @downloadURL  https://github.com/ReiiNoki/wayfarer-gaode-support/raw/main/wayfarer-gaode-support.user.js
 // @match        https://wayfarer.nianticlabs.com/new/mapview*
 // @match        https://wayfarer.nianticlabs.com/new/*
 // @run-at       document-start
@@ -64,11 +64,16 @@
     const LOG_PREFIX = '[Wayfarer Gaode/Page]';
     let mapCtorHooked = false;
     let markerCtorHooked = false;
+    let markerPrototypeHooked = false;
     let prototypeHooked = false;
     let mapsWatcherInstalled = false;
     let mapCtorWatcherInstalled = false;
+    let capturedMap = null;
+    let markerRestoreTimer = null;
+    const markerCache = new Map();
 
     window.__wayfarerGaodePageHookInstalled = true;
+    window.__wayfarerGaodeMarkerCache = markerCache;
 
     function log(...args) {
       console.log(LOG_PREFIX, ...args);
@@ -77,8 +82,73 @@
     function capture(candidate) {
       if (!candidate || !candidate.mapTypes || typeof candidate.setMapTypeId !== 'function') return;
       window.__wayfarerGaodeMap = candidate;
+      capturedMap = candidate;
+      installMapRestoreListeners(candidate);
       log('captured Google map instance:', candidate);
       window.dispatchEvent(new CustomEvent('wayfarer-gaode-map-captured'));
+    }
+
+    function latLngValue(value) {
+      if (!value) return null;
+      const lat = typeof value.lat === 'function' ? value.lat() : value.lat;
+      const lng = typeof value.lng === 'function' ? value.lng() : value.lng;
+      if (typeof lat !== 'number' || typeof lng !== 'number') return null;
+      return { lat, lng };
+    }
+
+    function markerPosition(marker) {
+      if (!marker) return null;
+      if (typeof marker.getPosition === 'function') return latLngValue(marker.getPosition());
+      return null;
+    }
+
+    function markerKey(marker) {
+      const position = markerPosition(marker);
+      if (!position) return null;
+      return `${position.lat.toFixed(6)},${position.lng.toFixed(6)}`;
+    }
+
+    function rememberMarker(marker) {
+      const key = markerKey(marker);
+      if (!key) return;
+
+      marker.__wayfarerGaodeMarkerKey = key;
+      markerCache.set(key, marker);
+      window.__wayfarerGaodeMarkerCache = markerCache;
+    }
+
+    function restoreCachedMarkers() {
+      if (!capturedMap) return;
+
+      let restored = 0;
+      markerCache.forEach((marker) => {
+        if (!marker || typeof marker.getMap !== 'function' || typeof marker.setMap !== 'function') return;
+        if (marker.getMap()) return;
+
+        try {
+          marker.setMap(capturedMap);
+          restored += 1;
+        } catch (error) {
+          console.warn(LOG_PREFIX, 'Could not restore cached marker:', error);
+        }
+      });
+
+      if (restored) log(`restored ${restored} cached marker(s).`);
+    }
+
+    function scheduleMarkerRestore() {
+      clearTimeout(markerRestoreTimer);
+      markerRestoreTimer = setTimeout(restoreCachedMarkers, 250);
+    }
+
+    function installMapRestoreListeners(targetMap) {
+      if (!targetMap || targetMap.__wayfarerGaodeMarkerRestoreListenersInstalled) return;
+      if (typeof targetMap.addListener !== 'function') return;
+
+      targetMap.__wayfarerGaodeMarkerRestoreListenersInstalled = true;
+      ['idle', 'zoom_changed', 'dragend'].forEach((eventName) => {
+        targetMap.addListener(eventName, scheduleMarkerRestore);
+      });
     }
 
     function maybeCaptureFromArgs(args) {
@@ -142,6 +212,8 @@
         maybeCaptureFromArgs(args);
         const marker = Reflect.construct(OriginalMarker, args, new.target || OriginalMarker);
         if (marker && typeof marker.getMap === 'function') capture(marker.getMap());
+        rememberMarker(marker);
+        setTimeout(() => rememberMarker(marker), 0);
         return marker;
       }
 
@@ -149,7 +221,36 @@
       WrappedMarker.prototype = OriginalMarker.prototype;
       maps.Marker = WrappedMarker;
       markerCtorHooked = true;
+      hookMarkerPrototype();
       log('Google Maps Marker constructor hooked.');
+    }
+
+    function hookMarkerPrototype() {
+      const proto = window.google && window.google.maps && window.google.maps.Marker && window.google.maps.Marker.prototype;
+      if (markerPrototypeHooked || !proto) return;
+      markerPrototypeHooked = true;
+
+      const originalSetMap = proto.setMap;
+      if (typeof originalSetMap === 'function') {
+        proto.setMap = function (...args) {
+          rememberMarker(this);
+          if (args[0]) capture(args[0]);
+
+          const result = originalSetMap.apply(this, args);
+          if (args[0] === null) scheduleMarkerRestore();
+          if (args[0]) rememberMarker(this);
+          return result;
+        };
+      }
+
+      const originalSetPosition = proto.setPosition;
+      if (typeof originalSetPosition === 'function') {
+        proto.setPosition = function (...args) {
+          const result = originalSetPosition.apply(this, args);
+          rememberMarker(this);
+          return result;
+        };
+      }
     }
 
     function installMapCtorWatcher(mapsObj) {
@@ -199,6 +300,7 @@
         hookMapConstructor();
         hookMapPrototype();
         hookMarkerConstructor();
+        hookMarkerPrototype();
       }, 0);
     }
 
