@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Niantic Wayfarer 高德地图支持插件
 // @namespace    https://wayfarer.nianticlabs.com/
-// @version      1.1.1
+// @version      1.1.2
 // @description  Add GCJ-02 corrected Gaode/AMap base layers to Niantic Wayfarer.
 // @author       ReiiNoki
 // @license      MIT
@@ -127,7 +127,8 @@
       const options = {
         position,
         visible: true,
-        optimized: true,
+        optimized: false,
+        clickable: false,
       };
 
       [
@@ -161,7 +162,6 @@
       entry.options = options;
       markerCache.set(key, entry);
       window.__wayfarerGaodeMarkerCache = markerCache;
-    window.__wayfarerGaodeRestoreCachedMarkers = restoreCachedMarkers;
     }
 
     function sourceIsVisible(entry) {
@@ -188,6 +188,9 @@
           ...entry.options,
           map: capturedMap,
           visible: true,
+          optimized: false,
+          clickable: false,
+          zIndex: Math.max(Number(entry.options.zIndex) || 0, 1000000),
         });
         clone.__wayfarerGaodeCacheClone = true;
         return clone;
@@ -205,7 +208,7 @@
       if (typeof entry.clone.setIcon === 'function' && entry.options.icon !== undefined) entry.clone.setIcon(entry.options.icon);
       if (typeof entry.clone.setLabel === 'function' && entry.options.label !== undefined) entry.clone.setLabel(entry.options.label);
       if (typeof entry.clone.setTitle === 'function' && entry.options.title !== undefined) entry.clone.setTitle(entry.options.title);
-      if (typeof entry.clone.setZIndex === 'function' && entry.options.zIndex !== undefined) entry.clone.setZIndex(entry.options.zIndex);
+      if (typeof entry.clone.setZIndex === 'function') entry.clone.setZIndex(Math.max(Number(entry.options.zIndex) || 0, 1000000));
       if (typeof entry.clone.setOpacity === 'function' && entry.options.opacity !== undefined) entry.clone.setOpacity(entry.options.opacity);
       if (typeof entry.clone.setVisible === 'function') entry.clone.setVisible(true);
       if (typeof entry.clone.setMap === 'function' && (!entry.clone.getMap || !entry.clone.getMap())) {
@@ -220,11 +223,6 @@
 
       let restored = 0;
       markerCache.forEach((entry) => {
-        if (sourceIsVisible(entry)) {
-          hideClone(entry);
-          return;
-        }
-
         try {
           if (showClone(entry)) restored += 1;
         } catch (error) {
