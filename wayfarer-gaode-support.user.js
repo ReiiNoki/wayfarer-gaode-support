@@ -1,14 +1,14 @@
 // ==UserScript==
-// @name         Ninatic Wayfarer 高德地图支持插件
+// @name         Niantic Wayfarer 高德地图支持插件
 // @namespace    https://wayfarer.nianticlabs.com/
-// @version      1.0.0
+// @version      1.1.0
 // @description  Add GCJ-02 corrected Gaode/AMap base layers to Niantic Wayfarer.
 // @author       ReiiNoki
 // @license      MIT
-// @homepageURL  https://github.com/ReiiNoki/wayfarer-gaode-map-layer
-// @supportURL   https://github.com/ReiiNoki/wayfarer-gaode-map-layer/issues
-// @updateURL    https://github.com/ReiiNoki/wayfarer-gaode-map-layer/raw/main/wayfarer-gaode-map.user.js
-// @downloadURL  https://github.com/ReiiNoki/wayfarer-gaode-map-layer/raw/main/wayfarer-gaode-map.user.js
+// @homepageURL  https://github.com/ReiiNoki/wayfarer-gaode-support
+// @supportURL   https://github.com/ReiiNoki/wayfarer-gaode-support/issues
+// @updateURL    https://github.com/ReiiNoki/wayfarer-gaode-support/raw/main/wayfarer-gaode-support.user.js
+// @downloadURL  https://github.com/ReiiNoki/wayfarer-gaode-support/raw/main/wayfarer-gaode-support.user.js
 // @match        https://wayfarer.nianticlabs.com/new/mapview*
 // @match        https://wayfarer.nianticlabs.com/new/*
 // @run-at       document-start
@@ -255,14 +255,14 @@
     if (!isValidTileY(coord.y, zoom)) return '';
     const x = wrapTileX(coord.x, zoom);
     const server = ((x + coord.y) % 4) + 1;
-    return `https://webst0${server}.is.autonavi.com/appmaptile?style=6&x=${x}&y=${coord.y}&z=${zoom}`;
+    return `https://wprd0${server}.is.autonavi.com/appmaptile?style=6&x=${x}&y=${coord.y}&z=${zoom}`;
   }
 
   function gaodeSatLabelUrl(coord, zoom) {
     if (!isValidTileY(coord.y, zoom)) return '';
     const x = wrapTileX(coord.x, zoom);
     const server = ((x + coord.y) % 4) + 1;
-    return `https://webst0${server}.is.autonavi.com/appmaptile?style=8&x=${x}&y=${coord.y}&z=${zoom}`;
+    return `https://wprd0${server}.is.autonavi.com/appmaptile?style=8&x=${x}&y=${coord.y}&z=${zoom}`;
   }
 
   function outOfChina(lat, lng) {
@@ -336,10 +336,10 @@
     };
   }
 
-  function createShiftedTile(coord, zoom, ownerDocument, urlForCoord, opacity = 1) {
+  function createShiftedTile(coord, zoom, ownerDocument, urlForCoord, opacity = 1, background = '#f3f1ec') {
     const doc = ownerDocument || document;
     const tile = doc.createElement('div');
-    tile.style.cssText = `width:${TILE_SIZE}px;height:${TILE_SIZE}px;overflow:hidden;position:relative;background:#f3f1ec;`;
+    tile.style.cssText = `width:${TILE_SIZE}px;height:${TILE_SIZE}px;overflow:hidden;position:relative;background:${background};`;
 
     if (!isValidTileY(coord.y, zoom)) return tile;
 
@@ -378,7 +378,35 @@
     return tile;
   }
 
-  function createGaodeMapType(name, alt, urlForCoord, opacity = 1) {
+  function createOverscaledTile(coord, zoom, ownerDocument, urlForCoord, opacity, maxNativeZoom, background) {
+    if (!maxNativeZoom || zoom <= maxNativeZoom) {
+      return createShiftedTile(coord, zoom, ownerDocument, urlForCoord, opacity, background);
+    }
+
+    const doc = ownerDocument || document;
+    const scale = 1 << (zoom - maxNativeZoom);
+    const nativeCoord = {
+      x: Math.floor(coord.x / scale),
+      y: Math.floor(coord.y / scale),
+    };
+    const offsetX = ((coord.x % scale) + scale) % scale;
+    const offsetY = coord.y - nativeCoord.y * scale;
+
+    const tile = doc.createElement('div');
+    tile.style.cssText = `width:${TILE_SIZE}px;height:${TILE_SIZE}px;overflow:hidden;position:relative;background:${background};`;
+
+    const nativeTile = createShiftedTile(nativeCoord, maxNativeZoom, doc, urlForCoord, opacity, background);
+    nativeTile.style.position = 'absolute';
+    nativeTile.style.left = `${-offsetX * TILE_SIZE}px`;
+    nativeTile.style.top = `${-offsetY * TILE_SIZE}px`;
+    nativeTile.style.transform = `scale(${scale})`;
+    nativeTile.style.transformOrigin = 'top left';
+    tile.appendChild(nativeTile);
+
+    return tile;
+  }
+
+  function createGaodeMapType(name, alt, urlForCoord, opacity = 1, maxNativeZoom = 20, background = '#f3f1ec') {
     return {
       name,
       alt,
@@ -386,7 +414,7 @@
       minZoom: 3,
       maxZoom: 20,
       getTile(coord, zoom, ownerDocument) {
-        return createShiftedTile(coord, zoom, ownerDocument, urlForCoord, opacity);
+        return createOverscaledTile(coord, zoom, ownerDocument, urlForCoord, opacity, maxNativeZoom, background);
       },
       releaseTile(tile) {
         if (tile && tile.replaceChildren) tile.replaceChildren();
@@ -402,7 +430,7 @@
       targetMap.mapTypes.set(MAPTYPE_GAODE, createGaodeMapType('Gaode', 'Gaode road map', gaodeRoadUrl));
     }
     if (!targetMap.mapTypes.get(MAPTYPE_GAODE_SAT)) {
-      targetMap.mapTypes.set(MAPTYPE_GAODE_SAT, createGaodeMapType('Gaode Satellite', 'Gaode satellite imagery', gaodeSatUrl));
+      targetMap.mapTypes.set(MAPTYPE_GAODE_SAT, createGaodeMapType('Gaode Satellite', 'Gaode satellite imagery', gaodeSatUrl, 1, 18));
     }
 
     return true;
@@ -425,7 +453,7 @@
     map.overlayMapTypes.clear();
     if (mode === MAPTYPE_GAODE_SAT) {
       map.setMapTypeId(MAPTYPE_GAODE_SAT);
-      map.overlayMapTypes.push(createGaodeMapType('Gaode Labels', 'Gaode satellite labels', gaodeSatLabelUrl, 0.75));
+      map.overlayMapTypes.push(createGaodeMapType('Gaode Labels', 'Gaode satellite labels', gaodeSatLabelUrl, 0.75, 18, 'transparent'));
     } else {
       map.setMapTypeId(mode);
     }
