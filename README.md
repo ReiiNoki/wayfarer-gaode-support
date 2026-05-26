@@ -37,11 +37,17 @@ https://wayfarer.nianticlabs.com/new/mapview
 
 - `高德`：看道路、位置和周边环境。
 - `高德卫星`：看候选点附近的实际地貌。
-- `预设` / `卫星`：切回 Wayfarer 原来的 Google 图层。
+- `预设` / `卫星`：切回 Wayfarer 原来的 Google 街道或卫星图层。
 
-## 效果截图
+## 对比
 
-![Niantic Wayfarer 高德地图支持](wayfarer-gaode-support.png)
+![高德谷歌街道对比](https://reiinoki.github.io/ingress/2026-05-23/vsroad.png)
+
+高德街道 vs 谷歌街道
+
+![高德谷歌卫星对比](https://reiinoki.github.io/ingress/2026-05-23/vssat.png)
+
+高德卫星 vs 谷歌卫星
 
 ## 感谢
 
