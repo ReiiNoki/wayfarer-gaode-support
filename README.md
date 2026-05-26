@@ -41,11 +41,11 @@ https://wayfarer.nianticlabs.com/new/mapview
 
 ## 对比
 
-![高德谷歌街道对比](https://reiinoki.github.io/ingress/2026-05-23/vsroad.png)
+![高德谷歌街道对比](https://raw.githubusercontent.com/reiinoki/reiinoki.github.io/main/ingress/2026-05-23/vsroad.png)
 
 高德街道 vs 谷歌街道
 
-![高德谷歌卫星对比](https://reiinoki.github.io/ingress/2026-05-23/vssat.png)
+![高德谷歌卫星对比](https://raw.githubusercontent.com/reiinoki/reiinoki.github.io/main/ingress/2026-05-23/vssat.png)
 
 高德卫星 vs 谷歌卫星
 
